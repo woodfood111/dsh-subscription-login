@@ -1,0 +1,26 @@
+# dsh-subscription-login bundle patch.
+#
+# Two rows, and the first one is the point:
+#
+# 1. `authorization` — the harness seam that obtains credentials a human has to
+#    hand over. The shipped `web` profile does NOT compose it, and
+#    `@deepseek-ai/dsh-llm-pi-ai` registers its provider sign-in flows inside
+#    `ctx.inject(['authorization'], …)`. Without this row the adapter waits
+#    forever for a service that never arrives, so no sign-in flow is registered
+#    anywhere and no plugin can offer one — which is why the subscription
+#    plugins that do work each reimplement OAuth instead of using the seam.
+#    Bringing the row is what makes one generic console possible.
+#
+# 2. `subscription-login` — this plugin.
+#
+# Both rows are guarded the same way: they back off when another enabled row
+# already mounts the same package name, so a deployment that composes
+# authorization itself (or a profile that mounts this plugin by absolute path
+# while developing) does not end up with two.
+- insert:
+    - id: authorization
+      name: '@deepseek-ai/dsh-authorization'
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === '@deepseek-ai/dsh-authorization' && e.options.id !== 'authorization' && !e.disabled)"
+    - id: subscription-login
+      name: 'dsh-subscription-login'
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-subscription-login' && e.options.id !== 'subscription-login' && !e.disabled)"

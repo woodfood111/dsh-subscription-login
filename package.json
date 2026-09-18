@@ -1,0 +1,68 @@
+{
+  "name": "dsh-subscription-login",
+  "version": "0.1.0",
+  "description": "Subscription sign-in console for DeepSeek Harness: sign in to ChatGPT (Codex), Claude, GitHub Copilot and OpenRouter through DSH's own authorization flows, from one page that lists every registered flow instead of one provider.",
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
+    "subscription",
+    "oauth",
+    "login",
+    "codex",
+    "claude",
+    "copilot",
+    "openrouter",
+    "web-ui"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "check": "node scripts/prepublish-check.mjs",
+    "prepublishOnly": "node scripts/prepublish-check.mjs"
+  },
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.1.5-rc.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/woodfood111/dsh-subscription-login.git"
+  },
+  "homepage": "https://github.com/woodfood111/dsh-subscription-login#readme",
+  "bugs": {
+    "url": "https://github.com/woodfood111/dsh-subscription-login/issues"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "platform": "web"
+    }
+  }
+}
