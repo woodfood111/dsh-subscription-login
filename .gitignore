@@ -1,0 +1,21 @@
+# Never commit credentials.
+.secrets/
+
+# Downloaded research material and scratch files.
+research/
+
+# Local verification homes and tooling.
+.tools/
+verify-home/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Packed tarballs
+*.tgz
+
+# OS noise
+Thumbs.db
+Desktop.ini
+.DS_Store
