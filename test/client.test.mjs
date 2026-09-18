@@ -404,6 +404,45 @@ test('key-only providers stay behind a toggle while subscriptions lead the page'
   assert.match(text, /othersNote/)
 })
 
+test('a busy flow this page never started can still be cancelled', async () => {
+  const react = createReact()
+  const fetchImpl = fetchStub({
+    '/plugins/dsh-subscription-login/flows': {
+      flows: [
+        {
+          key: 'llm-pi-ai/anthropic',
+          id: 'anthropic',
+          scope: 'llm-pi-ai',
+          label: 'Anthropic',
+          methods: [{ id: 'oauth', label: 'Sign in with Claude' }],
+          inFlight: true,
+          record: { configured: false, kind: null, writable: true },
+        },
+      ],
+      orphaned: [],
+    },
+    '/plugins/dsh-subscription-login/flows/cancel': { ok: true },
+  })
+  const { exports } = loadClient({ react, fetchImpl })
+  const t = (key, params) => (params === undefined ? key : `${key}:${JSON.stringify(params)}`)
+
+  const tree = await react.mount(exports.LoginConsole, { t })
+  assert.match(textOf(tree), /busy/)
+
+  const buttons = nodesOf(tree).filter((node) => node.type === 'button')
+  const signIn = buttons.find((node) => String(node.props?.className ?? '').includes('dsl_btnPrimary'))
+  assert.equal(signIn.props.disabled, true, 'a busy flow must not offer another sign-in')
+
+  const cancel = buttons.find((node) => textOf(node) === 'cancel')
+  assert.ok(cancel !== undefined, 'a busy row needs its own way out')
+  await cancel.props.onClick()
+
+  const posts = fetchImpl.calls.filter((call) => call.method === 'POST')
+  assert.equal(posts.length, 1)
+  assert.equal(posts[0].url, '/plugins/dsh-subscription-login/flows/cancel')
+  assert.deepEqual(JSON.parse(posts[0].body), { key: 'llm-pi-ai/anthropic' })
+})
+
 test("a provider's refusal is printed verbatim in a diagnostic block, not as a muted note", async () => {
   const react = createReact()
   const refusal =
@@ -529,6 +568,19 @@ test('clicking sign in walks the attempt and renders the question it is asked', 
   assert.equal(optionButtons.length, 2)
   // The attempt finished on the next poll, so its outcome is reported.
   assert.match(text, /authorized/)
+
+  // The panel must be reachable without scrolling past the provider list: a
+  // real user clicked sign-in, saw nothing change, and asked why, because the
+  // panel used to render after every row and the disclosure toggle.
+  const ordered = nodesOf(tree)
+  const panelIndex = ordered.findIndex((node) => String(node.props?.className ?? '').includes('dsl_panel'))
+  const firstRowIndex = ordered.findIndex((node) => String(node.props?.className ?? '').includes('dsl_row'))
+  assert.ok(panelIndex !== -1, 'the sign-in panel should render')
+  assert.ok(firstRowIndex !== -1, 'the provider rows should render')
+  assert.ok(
+    panelIndex < firstRowIndex,
+    'the sign-in panel must precede the provider list, not follow it',
+  )
 
   const posts = fetchImpl.calls.filter((call) => call.method === 'POST')
   assert.equal(posts.length, 1)

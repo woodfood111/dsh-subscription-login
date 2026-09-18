@@ -165,6 +165,26 @@ test('a LoginError becomes its own status and code', async () => {
   assert.equal(response.body.message, 'a sign-in is already running')
 })
 
+test('POST flows/cancel stops a busy flow by key alone', async () => {
+  const registry = registryStub({
+    cancelKey(key) {
+      registry.calls.push(['cancelKey', key])
+      return { ok: true }
+    },
+  })
+  const response = await createRouter(registry)(
+    request('POST', 'flows/cancel', { body: { key: 'llm-pi-ai/openai-codex' } }),
+  )
+  assert.equal(response.status, 200)
+  assert.deepEqual(registry.calls, [['cancelKey', 'llm-pi-ai/openai-codex']])
+})
+
+test('POST flows/cancel without a key is a coded 400', async () => {
+  const response = await createRouter(registryStub())(request('POST', 'flows/cancel', { body: {} }))
+  assert.equal(response.status, 400)
+  assert.equal(response.body.code, 'BAD_REQUEST')
+})
+
 test('an unexpected throw is reported as this plugin failing, not as a flow outcome', async () => {
   const registry = registryStub({
     async list() {

@@ -14,13 +14,17 @@
 - [x] PR 条目文件已写好：`publishing/woodfood111__dsh-subscription-login.yml`
 - [x] 代码是真能跑的（53 个测试 + 真机端到端，见 README）
 
-## 还差的（都是凭据/环境，不是代码）
+## 还差的
+
+- [x] **仓库已创建并推送**：<https://github.com/woodfood111/dsh-subscription-login>（18 个文件，`dsh-plugin` topic 已打，内容已核验：`.secrets` / `research` / `node_modules` 均未泄漏）
+
+推送走的是 GitHub **Git Data API**（`scripts/publish-github.mjs`），没有在本机安装 git。改完代码重跑一次该脚本即可增量同步。
 
 | 缺什么 | 现状 | 怎么补 |
 |---|---|---|
-| **git** | 这台机器上找不到 `git.exe` | 装 Git for Windows，或用 GitHub Desktop |
-| **GitHub 凭据** | 无 `gh`、无 ssh key、无 `GH_TOKEN` 环境变量 | `git push` 时会走 Windows 凭据管理器（你的 `.gitconfig` 里 `credential.helper = manager`） |
-| **npm 凭据** | 无 `~/.npmrc` | `npm login` |
+| **仓库满 1 天** | 创建于 `2026-09-18 22:05`（北京时间） | CI 硬门槛，等到次日 22:05 之后 |
+| **npm 凭据** | 无 `~/.npmrc` | `npm login`（可选：不发 npm 也能收录，只是没有下载量数字） |
+| **提 PR 用的 token** | 上一次的 token 文件已按约定删除 | 提 PR 时再放一个新 token 到 `.secrets/github-token.txt` |
 
 ## 步骤
 

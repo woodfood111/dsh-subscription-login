@@ -485,3 +485,34 @@ test('dispose() withdraws every running attempt', async () => {
     (error) => error instanceof LoginError && error.code === 'NO_ATTEMPT',
   )
 })
+
+test('cancelKey() stops a running sign-in when its id was never kept', async () => {
+  const { authorization, registry } = harness()
+  authorization.registerFlow({
+    key: 'llm-pi-ai/anthropic',
+    label: 'Anthropic',
+    methods: [{ id: 'oauth', label: 'OAuth' }],
+    run: (session) =>
+      new Promise((_resolve, reject) => {
+        session.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true })
+      }),
+  })
+
+  const { attemptId } = await registry.begin('llm-pi-ai/anthropic')
+  assert.equal((await registry.list()).flows[0].inFlight, true)
+
+  // Exactly the state a reloaded page is in: the key is known, the id is not.
+  assert.deepEqual(registry.cancelKey('llm-pi-ai/anthropic'), { ok: true })
+  const page = await registry.wait(attemptId, 0, 50)
+  assert.equal(page.done, true)
+  assert.equal(page.outcome, 'cancelled')
+  assert.equal((await registry.list()).flows[0].inFlight, false)
+})
+
+test('cancelKey() reports nothing running rather than silently succeeding', () => {
+  const { registry } = harness()
+  assert.throws(
+    () => registry.cancelKey('llm-pi-ai/anthropic'),
+    (error) => error instanceof LoginError && error.status === 404 && error.code === 'NO_ATTEMPT',
+  )
+})

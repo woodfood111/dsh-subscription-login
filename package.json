@@ -1,6 +1,6 @@
 {
   "name": "dsh-subscription-login",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Subscription sign-in console for DeepSeek Harness: sign in to ChatGPT (Codex), Claude, GitHub Copilot and OpenRouter through DSH's own authorization flows, from one page that lists every registered flow instead of one provider.",
   "keywords": [
     "deepseek",

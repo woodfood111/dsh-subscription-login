@@ -1,5 +1,6 @@
 # Never commit credentials.
 .secrets/
+.npmrc
 
 # Downloaded research material and scratch files.
 research/
@@ -7,6 +8,9 @@ research/
 # Local verification homes and tooling.
 .tools/
 verify-home/
+
+# Machine-specific reminder task and its runtime output.
+reminder/
 
 # Node
 node_modules/

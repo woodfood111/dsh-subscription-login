@@ -109,21 +109,25 @@ if (created.status === 201) {
   process.exit(1)
 }
 
-// --- 3. bootstrap a base commit --------------------------------------------
+// --- 3. bootstrap a base commit, only on an empty repository ----------------
 
 // A brand-new repository refuses the Git Data API with 409 until it has a
-// commit, so the first file goes in through the Contents API. Everything else
-// then lands as a single commit on top of it.
-const bootstrap = await api('PUT', `/repos/${owner}/${REPO}/contents/.gitignore`, {
-  message: 'Initialize repository',
-  content: readFileSync(join(ROOT, '.gitignore')).toString('base64'),
-})
-if (!bootstrap.ok) {
-  console.error(`初始提交失败：HTTP ${bootstrap.status} — ${bootstrap.json.message ?? ''}`)
-  process.exit(1)
+// commit, so the first file goes in through the Contents API. On an existing
+// repository this must be skipped: doing it again would push a second
+// "Initialize repository" commit ahead of every sync.
+let refInfo = await api('GET', `/repos/${owner}/${REPO}/git/ref/heads/main`)
+if (!refInfo.ok) {
+  const bootstrap = await api('PUT', `/repos/${owner}/${REPO}/contents/.gitignore`, {
+    message: 'Initialize repository',
+    content: readFileSync(join(ROOT, '.gitignore')).toString('base64'),
+  })
+  if (!bootstrap.ok) {
+    console.error(`初始提交失败：HTTP ${bootstrap.status} — ${bootstrap.json.message ?? ''}`)
+    process.exit(1)
+  }
+  refInfo = await api('GET', `/repos/${owner}/${REPO}/git/ref/heads/main`)
 }
 
-const refInfo = await api('GET', `/repos/${owner}/${REPO}/git/ref/heads/main`)
 if (!refInfo.ok) {
   console.error(`读 main 失败：HTTP ${refInfo.status}`)
   process.exit(1)

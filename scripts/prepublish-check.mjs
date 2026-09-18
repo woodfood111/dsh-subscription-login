@@ -78,6 +78,16 @@ if (/^\s*(import|export)\s/m.test(clientSource)) {
   fail('lib/client.js must not use ESM syntax; the client module format is a plain factory')
 }
 
+// The stylesheet renders inside a themed shell, on light and dark backgrounds
+// alike. A hardcoded text colour on the root was near-invisible in a light
+// theme — a real session reported every secondary control washed out — so the
+// root rule is pinned to inheritance.
+const rootRule = /\.dsl_root\{[^}]*\}/.exec(clientSource)?.[0] ?? ''
+if (rootRule === '') fail('lib/client.js has no .dsl_root rule')
+else if (/#[0-9a-fA-F]{3,8}\b/.test(rootRule)) {
+  fail(`.dsl_root must inherit its text colour rather than hardcode one: ${rootRule}`)
+}
+
 // --- dictionaries stay in step ---------------------------------------------
 
 const zhBlock = clientSource.slice(clientSource.indexOf('const zh = {'), clientSource.indexOf('const en = {'))
