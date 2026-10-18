@@ -20,6 +20,10 @@ const REPO = 'dsh-subscription-login'
 const DESCRIPTION =
   'Subscription sign-in console for DeepSeek Harness: one settings page for every OAuth sign-in the harness can offer, read from the authorization seam instead of hardcoded providers.'
 const TOPICS = ['dsh-plugin', 'dsh', 'deepseek-harness', 'oauth', 'deepseek']
+/** Commit message; a caller can override it for a follow-up sync. */
+const COMMIT_MESSAGE =
+  (process.env.GH_COMMIT_MESSAGE ?? '').trim() ||
+  'Release 0.1.2: boot fix for DSH 0.1.7-rc.2+\n\nThe authorization row now uses its own loader id and backs off when dsh-base already mounts the seam, so a profile no longer fails with duplicate loader entry id "authorization". README documents the compatibility and release notes.'
 
 /** Top-level entries that make up the published repository. Anything else is local. */
 const INCLUDE = new Set([
@@ -188,7 +192,7 @@ if (!treeResult.ok) {
 }
 
 const commit = await api('POST', `/repos/${owner}/${REPO}/git/commits`, {
-  message: 'Release 0.1.2: boot fix for DSH 0.1.7-rc.2+\n\nThe authorization row now uses its own loader id and backs off when dsh-base already mounts the seam, so a profile no longer fails with duplicate loader entry id "authorization". README documents the compatibility and release notes.',
+  message: COMMIT_MESSAGE,
   tree: treeResult.json.sha,
   parents: [baseSha],
 })

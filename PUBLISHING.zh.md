@@ -9,7 +9,7 @@
 - 市场条目**已合并且在线**：`data/plugins/woodfood111__dsh-subscription-login.yml`（PR 于 2026-09-20 合并），无需再动。
 - npm `latest` 现在是 **0.1.2**（2026-10-18 发布）。0.1.1 的补丁在 DSH **0.1.7-rc.2 及以后**会因 `duplicate loader entry id "authorization"` 冷启动失败；0.1.2 已把补丁行改成 `subscription-login-authorization` 并在 `dsh-base` 自带该 seam 时退让。已从 npm tarball 里核对过发布内容。
 - npm token：邮件里名为 `dsh-subscription-login` 的 granular token 于 2026-10-18 到期；本次发布用了一个新 token，发布后已删除本地文件。旧 token 建议到 npm 页面删掉。
-- GitHub 同步：仓库最后一次提交仍是 2026-09-18，**还没同步 0.1.2**。当前这台机器打不开 github.com 网页，无法创建 GitHub token；`api.github.com` 本身是通的，等能访问设置页（手机流量/代理）时再补一个 fine-grained token，跑一次 `scripts/publish-github.mjs` 即可。
+- GitHub 同步：**已完成 2026-10-18**，commit `83f5d12`（19 个文件）。这台机器的 github.com 网页打不开，但本机 Git Credential Manager 里已有可用的 GitHub 凭据；推送通过 `GH_TOKEN` 环境变量完成，token 没有落盘。以后再同步时，能在网页创建 fine-grained token 就按原流程，不能就直接用 GCM 里已有的凭据。
 
 ## 已经做完的
 
