@@ -9,7 +9,7 @@ It lives in **Settings → Plugins → Subscriptions**. It lists every sign-in y
 There are five or six of them already, and each hardcodes its own provider. This one hardcodes nothing:
 
 - **The list comes from `ctx.authorization`**, filled by `dsh-llm-pi-ai`, which registers one flow per installed pi-ai provider that ships a login. When pi-ai gains a provider, it appears here with no change to this plugin.
-- **It supplies the missing seam.** The shipped `web` profile does **not** compose `@deepseek-ai/dsh-authorization`, and `dsh-llm-pi-ai` registers its sign-in flows inside `ctx.inject(['authorization'], …)`. Without that service the adapter waits forever and **no provider's sign-in flow is ever registered** — which is exactly why the subscription plugins that do work each reimplement OAuth. This plugin's bundle patch brings the row, and that is what makes one generic console possible.
+- **It supplies the missing seam where the profile lacks it.** Older shipped `web` profiles did **not** compose `@deepseek-ai/dsh-authorization`, and `dsh-llm-pi-ai` registers its sign-in flows inside `ctx.inject(['authorization'], …)`. Without that service the adapter waits forever and **no provider's sign-in flow is ever registered** — which is exactly why the subscription plugins that do work each reimplement OAuth. `@deepseek-ai/dsh-base` 0.1.7-rc.2 and later mount the seam themselves; this plugin's patch inserts a row only when no other enabled row mounts the package, so it stands in on older profiles and backs off on newer ones.
 - **Unclaimed records are listed.** Records in the `llm-pi-ai` scope that no flow claims any more (the provider stopped shipping a login, or the plugin offering it was removed) get their own section, deletable in one click. The seam's own documentation says identifying those orphans is the caller's job; nobody was doing it.
 - **It is honest.** Signing out deletes the local record and the UI says so rather than implying revocation; unpriced things are not shown; a host with no flows renders "no sign-ins are available" instead of a button that cannot work.
 
@@ -29,9 +29,19 @@ dsh plugin --profile web add dsh-subscription-login
 
 Then **restart `dsh web`**.
 
-> ⚠️ The restart is required. The bundle patch inserts two rows (the authorization seam and this plugin), and the profile patch's hot reload did **not** pick up an out-of-process file write in testing — see "How far this was verified" below. After changing `dsh.profile.bundles`, a cold start is the only reliable path.
+> ⚠️ The restart is required. The bundle patch inserts this plugin's row and, on older profiles, the authorization seam row; the profile patch's hot reload did **not** pick up an out-of-process file write in testing — see "How far this was verified" below. After changing `dsh.profile.bundles`, a cold start is the only reliable path.
 
 Then open **Settings → Plugins → Subscriptions**.
+
+## Compatibility
+
+- **DSH 0.1.7-rc.2 and later** ship their own `authorization` row in `@deepseek-ai/dsh-base`. This plugin's patch uses a distinct loader id (`subscription-login-authorization`) and disables itself whenever another enabled row mounts `@deepseek-ai/dsh-authorization`, so it never duplicates the base row.
+- **Older profiles** that do not compose the seam still get it from this plugin.
+- The host and client contracts were checked against DSH **0.2.1-rc.2** (`authorization`, `credentials`, `webServer`, `connection`, `settings.plugins.tab`, `locale`), and the 58 offline tests pass.
+
+## Release notes
+
+**0.1.2** — Fixes cold boot on DSH 0.1.7-rc.2 and later, where `dsh-base` already mounts the authorization seam. The patch used to insert its own row under the same loader id (`authorization`), and the loader rejects that duplicate. The row now uses `subscription-login-authorization` and backs off whenever any other enabled row mounts the package. Documentation updated; no runtime code changes. 58 tests pass.
 
 ## Using it
 
@@ -53,7 +63,7 @@ Once signed in, the official **Settings → Models** page shows the provider row
 ## Development
 
 ```sh
-npm test      # 52 offline tests
+npm test      # 58 offline tests
 npm run check # release guard, run automatically by npm publish
 ```
 

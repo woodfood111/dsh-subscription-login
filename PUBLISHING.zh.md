@@ -4,15 +4,22 @@
 
 规则来自 [contributing.md](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md)：**一个 PR 只加一个文件**，`data/plugins/<owner>__<repo>.yml`。两个 README 都是脚本生成的，不要手工改。
 
+## 当前状态（2026-10-18）
+
+- 市场条目**已合并且在线**：`data/plugins/woodfood111__dsh-subscription-login.yml`（PR 于 2026-09-20 合并），无需再动。
+- npm `latest` 现在是 **0.1.2**（2026-10-18 发布）。0.1.1 的补丁在 DSH **0.1.7-rc.2 及以后**会因 `duplicate loader entry id "authorization"` 冷启动失败；0.1.2 已把补丁行改成 `subscription-login-authorization` 并在 `dsh-base` 自带该 seam 时退让。已从 npm tarball 里核对过发布内容。
+- npm token：邮件里名为 `dsh-subscription-login` 的 granular token 于 2026-10-18 到期；本次发布用了一个新 token，发布后已删除本地文件。旧 token 建议到 npm 页面删掉。
+- GitHub 同步：仓库最后一次提交仍是 2026-09-18，**还没同步 0.1.2**。当前这台机器打不开 github.com 网页，无法创建 GitHub token；`api.github.com` 本身是通的，等能访问设置页（手机流量/代理）时再补一个 fine-grained token，跑一次 `scripts/publish-github.mjs` 即可。
+
 ## 已经做完的
 
 - [x] `package.json` 声明了 `dsh.bundle.patch`（CI 的第一个硬门槛）
 - [x] 根目录有 `cordis.patch.yml`
 - [x] `package.json` 的 `repository` / `homepage` / `bugs` 指向目标仓库
-- [x] npm 包体校验通过：`npm publish --dry-run` → 9 个文件、30.6 kB，`prepublishOnly` 守卫通过
+- [x] npm 包体校验通过：`npm publish --dry-run` → 9 个文件、32.9 kB，`prepublishOnly` 守卫通过
 - [x] 包名 `dsh-subscription-login` 在 npm 上**未被占用**
 - [x] PR 条目文件已写好：`publishing/woodfood111__dsh-subscription-login.yml`
-- [x] 代码是真能跑的（53 个测试 + 真机端到端，见 README）
+- [x] 代码是真能跑的（58 个测试 + 真机端到端，见 README）
 
 ## 还差的
 
@@ -58,6 +65,8 @@ git push -u origin main
 npm login
 npm publish
 ```
+
+npm 现在默认发 **Granular Access Token**（带过期时间）：到 <https://www.npmjs.com/settings/woodfood111/tokens/granular-access-tokens/new> 创建，给 `dsh-subscription-login` 读写权限，有效期选够用；过期后重新生成。token 可以写进 `.secrets/npm-token.txt`（该目录已被 `.gitignore` 排除），发布完成后删掉。
 
 `prepublishOnly` 会自动跑 `scripts/prepublish-check.mjs`——五类事故会在发布前被挡住：宿主半引入了 `@deepseek-ai/*`、客户端半 require 了 react 以外的东西、两个字典 key 不一致、补丁弄丢了授权 seam、测试不过。
 

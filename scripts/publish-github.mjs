@@ -6,9 +6,9 @@
  * the machine untouched and, more to the point, keeps the token out of any
  * `.git/config` on disk.
  *
- * The token is read from `.secrets/github-token.txt`, used only in an
- * Authorization header, and never written to stdout. The file is deleted once
- * the push has succeeded.
+ * The token comes from `GH_TOKEN`/`GITHUB_TOKEN` when set, otherwise from
+ * `.secrets/github-token.txt`. It is used only in an Authorization header and
+ * never written to stdout; a token file is deleted once the push has succeeded.
  */
 import { readFileSync, readdirSync, statSync, rmSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -21,21 +21,46 @@ const DESCRIPTION =
   'Subscription sign-in console for DeepSeek Harness: one settings page for every OAuth sign-in the harness can offer, read from the authorization seam instead of hardcoded providers.'
 const TOPICS = ['dsh-plugin', 'dsh', 'deepseek-harness', 'oauth', 'deepseek']
 
-/** Directories that must never reach the repository. */
-const SKIP = new Set(['.git', '.secrets', '.tools', 'research', 'node_modules'])
+/** Top-level entries that make up the published repository. Anything else is local. */
+const INCLUDE = new Set([
+  '.gitignore',
+  'LICENSE',
+  'PUBLISHING.zh.md',
+  'README.md',
+  'README.zh.md',
+  'cordis.patch.yml',
+  'lib',
+  'package.json',
+  'publishing',
+  'scripts',
+  'test',
+])
 
-if (!existsSync(TOKEN_PATH)) {
-  console.error(`找不到 token 文件：${TOKEN_PATH}`)
-  process.exit(1)
+/** Per-file exclusions that must never reach the repository, even inside an included directory. */
+const SKIP_FILE = /(?:\.tgz|\.npmrc|\.log|\.bak[-.][^\\/]*)$/i
+
+if (process.argv.includes('--list')) {
+  for (const file of walk(ROOT).sort()) console.log(relative(ROOT, file).split('\\').join('/'))
+  process.exit(0)
 }
 
 // Take the last whitespace-separated run so a stray placeholder line above the
-// token cannot break the read, and never echo any of it.
-const token = readFileSync(TOKEN_PATH, 'utf8').trim().split(/\s+/).pop()
-if (!/^(ghp_|github_pat_)/.test(token ?? '')) {
-  console.error('token 格式不对：既不是 ghp_ 也不是 github_pat_ 开头')
+// token cannot break the read, and never echo any of it. An environment token
+// wins over the file so a caller can avoid writing the secret to disk at all.
+const envToken = (process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? '').trim()
+const fileToken = existsSync(TOKEN_PATH)
+  ? readFileSync(TOKEN_PATH, 'utf8').trim().split(/\s+/).pop()
+  : undefined
+const token = envToken !== '' ? envToken : fileToken
+if (token === undefined || token === '') {
+  console.error(`找不到 GitHub token：设置 GH_TOKEN 环境变量，或写入 ${TOKEN_PATH}`)
   process.exit(1)
 }
+if (!/^(ghp_|github_pat_|gho_)/.test(token)) {
+  console.error('token 格式不对：既不是 ghp_、github_pat_ 也不是 gho_ 开头')
+  process.exit(1)
+}
+const tokenFromFile = envToken === '' && fileToken !== undefined
 
 const headers = {
   authorization: `Bearer ${token}`,
@@ -65,10 +90,10 @@ async function api(method, path, body) {
 function walk(dir) {
   const out = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (SKIP.has(entry.name)) continue
+    if (dir === ROOT && !INCLUDE.has(entry.name)) continue
     const full = join(dir, entry.name)
     if (entry.isDirectory()) out.push(...walk(full))
-    else if (!entry.name.endsWith('.tgz')) out.push(full)
+    else if (!SKIP_FILE.test(entry.name)) out.push(full)
   }
   return out
 }
@@ -163,7 +188,7 @@ if (!treeResult.ok) {
 }
 
 const commit = await api('POST', `/repos/${owner}/${REPO}/git/commits`, {
-  message: 'Subscription sign-in console for DeepSeek Harness\n\nOne settings page listing every sign-in flow registered on the authorization seam, and the bundle patch that supplies the seam row the shipped web profile omits.',
+  message: 'Release 0.1.2: boot fix for DSH 0.1.7-rc.2+\n\nThe authorization row now uses its own loader id and backs off when dsh-base already mounts the seam, so a profile no longer fails with duplicate loader entry id "authorization". README documents the compatibility and release notes.',
   tree: treeResult.json.sha,
   parents: [baseSha],
 })
@@ -188,10 +213,14 @@ const topics = await api('PUT', `/repos/${owner}/${REPO}/topics`, { names: TOPIC
 if (topics.ok) console.log(`✓ topic：${TOPICS.join(', ')}`)
 else console.log(`⚠ topic 设置失败：HTTP ${topics.status}（可以到仓库页面手动加 dsh-plugin）`)
 
-// --- 6. burn the token file -------------------------------------------------
+// --- 6. burn the token file (only when the file was the source) ------------
 
-rmSync(TOKEN_PATH, { force: true })
-console.log('✓ 已删除 .secrets/github-token.txt')
+if (tokenFromFile) {
+  rmSync(TOKEN_PATH, { force: true })
+  console.log('✓ 已删除 .secrets/github-token.txt')
+} else {
+  console.log('· token 来自环境变量，未写入磁盘')
+}
 
 console.log(`\n仓库地址：https://github.com/${owner}/${REPO}`)
 console.log(`创建时间就是现在——1 天年龄门槛从此刻开始计时。`)

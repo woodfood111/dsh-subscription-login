@@ -9,7 +9,7 @@
 生态里已经有五六个同类插件，每个都硬编码自己的 provider。这个不硬编码任何东西：
 
 - **列表来自 `ctx.authorization`**，由 `dsh-llm-pi-ai` 按"每个带登录的 pi-ai provider 注册一个 flow"填充。上游 pi-ai 加一家 provider，这里**自动出现**，本插件一行不用改。
-- **它把缺的那道缝合上了。** 官方随附的 `web` profile **没有组合 `@deepseek-ai/dsh-authorization`**，而 `dsh-llm-pi-ai` 是在 `ctx.inject(['authorization'], …)` 里注册登录流程的。没有这个服务，适配器永远等不到它，**任何 provider 的登录流程都不会被注册**——这正是那些能用的订阅插件全都自己重写一遍 OAuth 的原因。本插件的 bundle 补丁把这一行带来，于是"一个通用控制台"才成立。
+- **它把缺的那道缝补上了——只在需要时。** 旧版官方 `web` profile **没有组合 `@deepseek-ai/dsh-authorization`**，而 `dsh-llm-pi-ai` 是在 `ctx.inject(['authorization'], …)` 里注册登录流程的。没有这个服务，适配器永远等不到它，**任何 provider 的登录流程都不会被注册**——这正是那些能用的订阅插件全都自己重写一遍 OAuth 的原因。`@deepseek-ai/dsh-base` 0.1.7-rc.2 起自己挂载了这道 seam；本插件的补丁只在没有别的启用行挂载该包时插入一行，因此旧 profile 上补位，新 profile 上自动退让。
 - **无主凭据会被列出来。** `llm-pi-ai` 作用域里、当前没有任何流程认领的记录（provider 不再提供登录、或提供者插件被卸载）会单独成节，可一键删除。官方文档明说"识别这种孤儿记录由调用方负责"，此前没人做。
 - **诚实。** 登出只删本机记录，界面里就这么写，不假装吊销；未定价的东西不显示；宿主没有流程时显示"没有可登录的账号"而不是一个点不动的按钮。
 
@@ -29,9 +29,19 @@ dsh plugin --profile web add dsh-subscription-login
 
 然后**重启 `dsh web`**。
 
-> ⚠️ 重启是必须的。bundle 补丁会插入两行（授权 seam + 本插件），而 profile 补丁的热重载在实测中**没有**对进程外的文件写入生效（见下面"验证到哪一步"）。改 profile 的 `dsh.profile.bundles` 之后，冷启动是唯一可靠的路径。
+> ⚠️ 重启是必须的。bundle 补丁会插入本插件的行，并在旧 profile 上补上授权 seam 行；而 profile 补丁的热重载在实测中**没有**对进程外的文件写入生效（见下面"验证到哪一步"）。改 profile 的 `dsh.profile.bundles` 之后，冷启动是唯一可靠的路径。
 
 装完打开 **设置 → 插件 → 订阅登录**。
+
+## 兼容性
+
+- **DSH 0.1.7-rc.2 及以后**：`@deepseek-ai/dsh-base` 自带 `authorization` 行。本补丁用独立的 loader id（`subscription-login-authorization`），并在任何其它启用行已经挂载 `@deepseek-ai/dsh-authorization` 时把自己禁用，因此不会和基础行重复。
+- **更旧的 profile** 没有这道 seam 时，仍由本插件补上。
+- 宿主与客户端契约已对照 DSH **0.2.1-rc.2** 检查（`authorization`、`credentials`、`webServer`、`connection`、`settings.plugins.tab`、`locale`），58 个离线测试通过。
+
+## 发布说明
+
+**0.1.2** —— 修复 DSH 0.1.7-rc.2 及以后版本上的冷启动失败：`dsh-base` 已经挂载授权 seam，而补丁又用同一个 loader id（`authorization`）插入自己的行，loader 拒绝重复 id。现在该行改用 `subscription-login-authorization`，并在任何其它启用行挂载该包时自动退让。文档同步更新；运行时代码无改动。58 个测试通过。
 
 ## 用法
 
@@ -53,13 +63,13 @@ dsh plugin --profile web add dsh-subscription-login
 ## 开发
 
 ```sh
-npm test      # 52 个离线测试
+npm test      # 58 个离线测试
 npm run check # 发布守卫，npm publish 会先跑它
 ```
 
 **没有构建步骤。** `lib/client.js` 是手写的客户端模块格式（`window.__ModuleLoader__.load` + 工厂函数），仓库里那个文件就是发布出去、也是实际运行的那个文件。`require("react")` 走 shell 的静态模块表。
 
-测试分三层，都在 Node 里跑，不需要浏览器、不需要装 DSH：
+测试分四层，都在 Node 里跑，不需要浏览器、不需要装 DSH：
 
 | 文件 | 覆盖 |
 |---|---|
